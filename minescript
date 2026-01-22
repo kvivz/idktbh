@@ -1,0 +1,96 @@
+import minescript
+import time
+import re
+
+MIN_DELAY = 0.2
+last_reply_time = 0.0
+
+REPLIES = [
+    "jaa",
+    "ja plssss",
+    "JAAAAAAAAA",
+    "JAAAAAAAAAAAAAAAAAAAA",
+    "ja bre",
+    "Jaaaaaaaaa",
+]
+
+reply_index = 0
+
+IGNORED_SUBSTRINGS = (
+    "kspjd",
+    "kspj meni",
+    "kspj cf",
+    "hocete kspj",
+    "ocete kspj",
+)
+
+SPECIFIC_TRIGGERS = (
+    "kspj crystal rank",
+    "kspj crystal",
+    "kspj rank",
+    "kspj plus",
+    "kspj plus+",
+    "kspj plus+ rank",
+    "kspj plus rank",
+    "kspj skoria rank",
+    "kspj plus kit",
+    "kspj 1m",
+    "kspj 2m",
+    "kspj 3m",
+    "kspj 4m",
+    "kspj 5m",
+    "kspj 6m",
+    "kspj 7m",
+    "kspj 8m",
+    "kspj 9m",
+    "[skoria] the chat has been unlocked by",
+)
+
+def normalize_kspj(text):
+    text = text.lower()
+    text = re.sub(r"\s+m\b", "m", text)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip()
+
+with minescript.EventQueue() as event_queue:
+    event_queue.register_chat_listener()
+    minescript.echo("autokspj script loaded")
+
+    while True:
+        event = event_queue.get()
+        if event.type != minescript.EventType.CHAT:
+            continue
+
+        raw_message = event.message
+        lower_raw = raw_message.lower()
+
+        if any(bad in lower_raw for bad in IGNORED_SUBSTRINGS):
+            continue
+
+        # ignore names
+        if ":" in raw_message:
+            content = raw_message.split(":", 1)[1].strip()
+        else:
+            content = raw_message.strip()
+
+        lower_content = normalize_kspj(content)
+
+        is_specific = any(trigger in lower_content for trigger in SPECIFIC_TRIGGERS)
+
+        if not is_specific:
+            if "kspj" not in lower_content:
+                continue
+
+            numbers = re.findall(r"\d+", lower_content)
+            if not any(int(n) >= 10 for n in numbers):
+                continue
+
+        now = time.time()
+        if now - last_reply_time < MIN_DELAY:
+            continue
+
+        reply = REPLIES[reply_index]
+        minescript.chat(reply)
+
+        reply_index = (reply_index + 1) % len(REPLIES)
+        last_reply_time = now
